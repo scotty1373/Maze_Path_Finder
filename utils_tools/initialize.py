@@ -48,7 +48,7 @@ class maze_build:
             grid_check = np.array(grid_map)[0, :, :]
         else:
             grid_check = grid_map[0, :, :]
-        flag = list(map(lambda x: 0 if x == 255 else 1, grid_check.reshape(-1)))
+        flag = list(map(lambda x: 0 if x > 0 else 1, grid_check.reshape(-1)))
         return np.array(flag)
 
     def assign_block(self, grid_map):
@@ -91,9 +91,9 @@ if __name__ == '__main__':
         maze_model.maze_cache[i, ...] = graph
         maze_model.maze_flag[i, ...] = mark_flag
 
-        maze_temp = Image.fromarray(graph.transpose((1, 2, 0)))     # C, H, W --> H, W, C
-
-        maze_temp.save(os.path.join("..", PATH_DIR, f'maze_{i}.jpg'))
+        maze_temp = Image.fromarray(np.uint8(graph.transpose(1, 2, 0)))     # C, H, W --> H, W, C
+        # 不能保存为jpg格式，否则图像会压缩，导致图像灰度变化
+        maze_temp.save(os.path.join("..", PATH_DIR, f'maze_{i}.png'))
 
 
 
