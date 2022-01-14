@@ -10,7 +10,7 @@ import random
 import shutil
 import os
 import copy
-from maze_build import Checking
+from .maze_build import Checking
 
 NUM_BLOCKS = 75
 GRID_SIZE = [3, 25, 25]

@@ -10,7 +10,7 @@ import numpy as np
 from collections import deque
 import random
 import copy
-from model import Model
+from .model import Model
 from torch.autograd import Variable
 
 
@@ -19,6 +19,7 @@ class DDQN:
         self.t = 0
         self.max_Q = 0
         self.train_loss = 0
+        self.ep = 0
         self.train = True
         self.train_from_ckpt = False
 
@@ -37,12 +38,12 @@ class DDQN:
         self.epsilon_min = 0.01
 
         # trainner initialize
-        self.batch_size = 64
-        self.train_start = 100
+        self.batch_size = 32
+        self.train_start = 2000
         self.discount_factor = 0.99
-        self.learning_rate = 1e-4
+        self.learning_rate = 1e-3
         self.train_from_checkpoint_start = 3000
-        self.explore = 4000
+        self.explore = 10000
 
         # Create replay memory using deque
         self.memory = deque(maxlen=32000)
@@ -63,24 +64,26 @@ class DDQN:
 
     # Get action from model using epsilon-greedy policy
     def get_action(self, Input):
+        Input = np.expand_dims(Input, axis=0)
+        Input = torch.FloatTensor(Input).to(self.device)
         if np.random.rand() <= self.epsilon:
             return np.random.randint(0, 1)
         else:
-            q_value = self.model(Input[0], Input[1])
+            q_value = self.model(Input)
             return torch.argmax(q_value[0]).item()
 
-    def replay_memory(self, state, v_ego, action, reward, next_state, nextV_ego, done):
+    def exp_memory(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done, self.t))
         if self.epsilon > self.epsilon_min:
             self.epsilon -= (self.initial_epsilon - self.epsilon_min) / self.explore
 
-    def train_replay(self):
+    def training(self):
         if len(self.memory) < self.train_start:
             return
         batch_size = min(self.batch_size, len(self.memory))
         minibatch = random.sample(self.memory, batch_size)
 
-        state_t, v_ego_t, action_t, reward_t, state_t1, v_ego_t1, terminal, step = zip(*minibatch)
+        state_t, action_t, reward_t, state_t1, terminal, _ = zip(*minibatch)
         state_t = Variable(torch.Tensor(state_t).squeeze().to(self.device))
         state_t1 = Variable(torch.Tensor(state_t1).squeeze().to(self.device))
 
@@ -96,7 +99,7 @@ class DDQN:
             else:
                 a = torch.argmax(target_val[i])
                 targets[i][action_t[i]] = reward_t[i] + self.discount_factor * (target_val_[i][a])
-        logits = self.model(state_t, v_ego_t)
+        logits = self.model(state_t)
         loss = self.loss(logits, targets)
         loss.backward()
         self.optimizer.step()

@@ -25,14 +25,15 @@ class Maze_Builder(gym.Env):
         self.terminate_idx = dict()     # 用于记录所有终止状态
         self.screen = rendering.Viewer(600, 400)
         self.states = range(self.grid_block_num)    # 用于创建所有可遍历状态
+        self.bounary = False
         self.state = 0              # 用于记录迷宫中当前位置index
         self.action = ['B', 'R']
         self.maze = None            # 用于从迷宫文件中读取读取数据
         self.flag = None            # 用于创建传向网络的可视化maze标志
         # Testing
-        self.maze = np.array(Image.open(os.path.join(self.root, 'maze_0.png')))
-        self.flag = self.check_block(self.maze.transpose((2, 0, 1)))
-        self.build_state_space()
+        # self.maze = np.array(Image.open(os.path.join(self.root, 'maze_0.png')))
+        # self.flag = self.check_block(self.maze.transpose((2, 0, 1)))
+        # self.build_state_space()
 
     def build_state_space(self):
         assert self.grid_size[0] == self.grid_size[1]
@@ -90,11 +91,13 @@ class Maze_Builder(gym.Env):
 
         if key in self.state_transform:
             next_state, reward = self.state_transform[key]
+            is_terminal = False
         else:
-            next_state, reward = state, 0
+            next_state, reward = state, -100
+            is_terminal = True
+            self.bounary = True
         self.state = next_state
 
-        is_terminal = False
         if next_state in self.terminate_idx:
             is_terminal = True
 
@@ -115,11 +118,16 @@ class Maze_Builder(gym.Env):
         self.build_state_space()
         self.terminate_index_collect()
         self.state = 0
+        self.bounary = False
+        return self._get_obs()
 
     def _get_obs(self):
         img = copy.deepcopy(self.maze)
         img[0, 0, :] = [255, 255, 255]
-        img[self.state//self.grid_size[0], self.state % self.grid_size[0], :] = [20, 40, 222]
+        if not self.bounary:
+            img[self.state//self.grid_size[0], self.state % self.grid_size[0], :] = [20, 40, 222]
+        else:
+            pass
         return img.transpose((2, 0, 1))
 
     def render(self, mode='human', close=False):
